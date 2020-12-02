@@ -93,7 +93,7 @@ export default class APIService {
   }
 
   static patch() {
-    throw new Error("Please consider using PUT method");
+    throw new Error($_("Please consider using PUT method"));
   }
 
   // wire up the api service to the api route resolver

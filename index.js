@@ -99,48 +99,54 @@ function createPo(items) {
 function registerCallee(callee, args, references=[]) {
   if (callee === "gettext") {
     if (
-      args.length !== 1 ||
+      args.length < 1 ||
       typeof args[0] !== "string"
     ) {
       throw new Error(
-        "gettext requires 1 single string argument\n" +
+        "gettext requires the first argument to be a string literal,\n" +
+        "the rest, if present, will be counted as placeholder(%s) values\n" +
         `given: ${JSON.stringify(args)}`
       );
       process.exit(-1);
     }
   } else if  (callee === "pgettext") {
     if (
-      args.length !== 2 ||
+      args.length < 2 ||
       typeof args[0] !== "string" ||
       typeof args[1] !== "string"
     ) {
       throw new Error(
-        "pgettext requires 2 string arguments\n" +
+        "pgettext requires the first two arguments to be string literals\n" +
+        "the rest, if present, will be counted as placeholder(%1, %2, etc.) values\n" +
         `given: ${JSON.stringify(args)}`
       );
       process.exit(-1);
     }
   } else if  (callee === "ngettext") {
     if (
-      args.length !== 3 ||
+      args.length < 3 ||
       typeof args[0] !== "string" ||
       typeof args[1] !== "string"
     ) {
       throw new Error(
-        "ngettext requires 3 arguments, the first two should be string\n" +
+        "ngettext requires the first two arguments to be string literals\n" +
+        "the third to be anything that results in a number\n" +
+        "the rest, if present, will be counted as placeholder(%1, %2, etc.) values\n" +
         `given: ${JSON.stringify(args)}`
       );
       process.exit(-1);
     }
   } else if  (callee === "npgettext") {
     if (
-      args.length !== 4 ||
+      args.length < 4 ||
       typeof args[0] !== "string" ||
       typeof args[1] !== "string" ||
       typeof args[2] !== "string"
     ) {
       throw new Error(
-        "npgettext requires 4 arguments, the first three should be string\n" +
+        "npgettext requires the first three arguments to be string literals\n" +
+        "the forth to be anything that results in a number\n" +
+        "the rest, if present, will be counted as placeholder(%1, %2, etc.) values\n" +
         `given: ${JSON.stringify(args)}`
       );
       process.exit(-1);
@@ -188,7 +194,12 @@ const jsTxt = parsedSpa.script.content;
 
 const tplFnAst = babelParser.parse(tplFnTxt);
 
-const walker = (path) => {
+// @param {String} srcType   "template|js", template indicates this
+//  the walker will be applied on compiled vue SFC template function, in
+//  which case we can't map the accurate line number of the translation
+//  texts, but for "js", either it's the script part of the SFC, or an
+//  individual module, we can obtain the exact matching line number
+const walker = (path, srcType) => {
   if (
     path.node.type === "CallExpression"
   ) {
@@ -205,9 +216,9 @@ const walker = (path) => {
 
       // TODO: should merge multiple same entries into one entry with
       // different references
-      let references = [
-        `${path.node.loc.start.line}:${path.node.loc.start.column}`
-      ];
+      let references = srcType === "js"
+        ? [`${path.node.loc.start.line}:${path.node.loc.start.column}`]
+        : [];
 
       if (helpersShortcutsMap.gettext === calleeName) {
         registerCallee("gettext", args, references);
@@ -222,9 +233,11 @@ const walker = (path) => {
   }
 };
 
-// babelTraverse(tplFnAst, {
-//   enter: walker
-// });
+babelTraverse(tplFnAst, {
+  enter(astPath) {
+    walker(astPath, "template");
+  }
+});
 
 const jsAst = babelParser.parse(jsTxt, {
   sourceType: "module"
@@ -233,7 +246,9 @@ const jsAst = babelParser.parse(jsTxt, {
 fs.writeFileSync("./scp", JSON.stringify(jsAst));
 
 babelTraverse(jsAst, {
-  enter: walker
+  enter(astPath) {
+    walker(astPath, "js");
+  }
 });
 
 const individualScpTxt = fs.readFileSync("./libs/js/api-service.js", "utf-8");
@@ -241,9 +256,11 @@ const individualScpAst = babelParser.parse(individualScpTxt, {
   sourceType: "module"
 });
 
-// babelTraverse(individualScpAst, {
-//   enter: walker
-// });
+babelTraverse(individualScpAst, {
+  enter(astPath) {
+    walker(astPath, "js");
+  }
+});
 
 
 console.log(translations)

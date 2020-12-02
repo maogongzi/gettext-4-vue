@@ -252,6 +252,7 @@
   import SaveFlowDialog from "__libs/components/SaveFlowDialog";
   import chartMethodsMixin from "__libs/components/flowchart/chart-methods-mixin";
   import FlowVersionsTable from "./FlowVersionsTable";
+  import { $_, $n_, $p_, $np_ } from "__shared-libs/js/modules/gettext";
 
   export default {
     name: "flow-dialog",
@@ -535,14 +536,14 @@
               icon: "edit",
               // render the action as a shortcut
               type: "shortcut",
-              title: `Edit "${node.name}"`
+              title: $_('Edit "%1"', node.name)
             },
             {
               id: "delete",
               icon: "times",
               // render the action as a shortcut
               type: "shortcut",
-              title: `Delete "${node.name}"`
+              title: $_('Delete "%1"', node.name)
             }
           ];
         } else {
@@ -552,7 +553,7 @@
               icon: "eye",
               // render the action as a shortcut
               type: "shortcut",
-              desc: `View details of "${node.name}"`
+              desc: $_('View details of "%1"', node.name)
             }
           ];
         }
@@ -572,8 +573,8 @@
         let node = this.getNodeById(nodeId);
 
         this.$confirm({
-          dialogTitle: "Delete Job",
-          dialogBody: `Are your sure you want to delete job "${node.name}"?`,
+          dialogTitle: $_("Delete Job"),
+          dialogBody: $_('Are your sure you want to delete job "%1"?', node.name),
 
           okClicked: () => {
             this.$showLoading();
@@ -598,7 +599,7 @@
                   })
                 );
 
-                this.$showNotice("Job successfully deleted!");
+                this.$showNotice($_("Job successfully deleted!"));
               })
               .catch(({ message }) => {
                 this.$alert(message);
@@ -643,9 +644,7 @@
             // refresh the checked state map, passing the curent version
             // as parameter
             this.refreshCheckMap(version.id);
-            this.$showNotice(
-              `Successfully switched flow version to "${version.message}"!`
-            );
+            this.$showNotice($_('Successfully switched flow version to "%1"!', version.message));
           })
           .catch(({ message }) => {
             this.$alert(message);
@@ -661,7 +660,7 @@
         // create new node
         if (this.manageNodeMode === "create") {
           this.changeNodes([...this.nodes, refreshNodeUUID(node)]);
-          this.$showNotice(`Job successfully created!`);
+          this.$showNotice($_('Job successfully created!'));
         } else if (this.manageNodeMode === "edit") {
           // else: edit existing node
           let updatedNodes = this.nodes.map((item) => {
@@ -673,7 +672,7 @@
           });
 
           this.changeNodes(updatedNodes);
-          this.$showNotice(`Job successfully updated!`);
+          this.$showNotice($_("Job successfully updated!"));
         }
 
         // detach reference
@@ -816,7 +815,7 @@
         // 2. flow shouldn't include circles
         // 3. flow shouldn't include nodes detached from the tree
         if (flowDesc === "") {
-          error = this.$_("Flow description can't be empty");
+          error = $_("Flow description can't be empty");
         } else if (circular.length > 0) {
           // only report the first circular(graphlib requires the edge endpoints
           // to be string, we should convert them back into numbers)
@@ -832,9 +831,9 @@
           }
 
           circular = res;
-          error = this.$_("Circular references detected, please fix your flow design.");
+          error = $_("Circular references detected, please fix your flow design.");
         } else if (detached.length > 0) {
-          error = this.$_("Flow should not include detached nodes");
+          error = $_("Flow should not include detached nodes");
         }
 
         return [
@@ -906,7 +905,7 @@
                 // the checking result is right, double-check it here.
                 this.detachedNodes = error.data;
                 this.$alert(
-                  this.$np_(
+                  $np_(
                     "flow canvas actions",
                     "Found a detached node",
                     "Found detached nodes",
@@ -915,9 +914,7 @@
                 );
               } else if (error.status === -4) {
                 // else: circular references
-                this.$alert(
-                  "Circular references detected, please fix your flow design."
-                );
+                this.$alert($_("Circular references detected, please fix your flow design."));
 
                 this.circularConns = error.data;
               } else {
@@ -959,8 +956,8 @@
 
       cancelBtnClick() {
         this.$confirm({
-          dialogTitle: this.$_("Discard Flow Changes"),
-          dialogBody: this.$p_("confirm message", 'Are you sure you want to discard all changes made to '+
+          dialogTitle: $_("Discard Flow Changes"),
+          dialogBody: $p_("confirm message", 'Are you sure you want to discard all changes made to '+
             'the ' +"flow?"),
 
           okClicked: () => {
