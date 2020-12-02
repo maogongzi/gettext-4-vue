@@ -960,8 +960,8 @@
       cancelBtnClick() {
         this.$confirm({
           dialogTitle: this.$_("Discard Flow Changes"),
-          dialogBody: this.$p_("confirm message", 'Are you sure you want to discard all changes made to'+
-            'the flow?'),
+          dialogBody: this.$p_("confirm message", 'Are you sure you want to discard all changes made to '+
+            'the ' +"flow?"),
 
           okClicked: () => {
             this.$showLoading();

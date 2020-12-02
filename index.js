@@ -5,6 +5,8 @@ const { default: babelTraverse } = require("@babel/traverse");
 const compiler = require("vue-template-compiler");
 const spaUtils = require("@vue/component-compiler-utils");
 
+// TODO: support string combinations: "this is "+ "a field"
+
 const spaContent = fs.readFileSync("./libs/components/FlowDialog.vue", "utf-8");
 
 let parsedSpa = spaUtils.parse({
@@ -22,6 +24,32 @@ const helpersShortcutsMap = {
 
 // all translation items
 let translations = [];
+
+/**
+ * Returns a raw string from some JSX attributes or call
+ * expression arguments.
+ * @see https://github.com/laget-se/react-gettext-parser/blob/master/src/
+ *  node-helpers.js
+ */
+function getArgValue(argNode) {
+  let retrived = null;
+
+  if (argNode.type === 'BinaryExpression') {
+    if (argNode.operator === '+') {
+      const left = getArgValue(argNode.left)
+      const right = getArgValue(argNode.right)
+
+      if (left && right) {
+        // "Julius " + "Caesar" => "Julius Caesar"
+        retrived = left + right;
+      }
+    }
+  } else if (argNode.type === 'StringLiteral') {
+    retrived = argNode.value;
+  }
+
+  return retrived;
+}
 
 
 function createPo(items) {
@@ -144,8 +172,6 @@ function registerCallee(callee, args) {
   }
 }
 
-
-
 // console.log(compiler.compile(parsedSpa.template.content))
 // console.log(Object.keys(parsedSpa))
 // console.log(Object.keys(parsedSpa.script))
@@ -164,15 +190,14 @@ const walker = (path) => {
   ) {
     // for cases: dialogTitle: this.$_() we should treat it as a
     // Member Expression with it's name wrapped up in `property` field
-    // TODO: support string combinations: "this is "+ "a field"
-    let calleeName = path.node.callee.name || path.node.callee.property.name;
+    let calleeName = path.node.callee.object
+      ? path.node.callee.property.name
+      : path.node.callee.name;
 
     if (Object.values(helpersShortcutsMap).includes(calleeName)) {
       // in js part this can be used
       // console.log(`${path.node.loc.start.line}:${path.node.loc.start.column}`);
-      let args = path.node.arguments.map((arg) => {
-        return arg.value;
-      });
+      let args = path.node.arguments.map((arg) => getArgValue(arg));
 
       if (helpersShortcutsMap.gettext === calleeName) {
         registerCallee("gettext", args);
