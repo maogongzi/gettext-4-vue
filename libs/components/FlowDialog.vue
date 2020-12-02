@@ -816,7 +816,7 @@
         // 2. flow shouldn't include circles
         // 3. flow shouldn't include nodes detached from the tree
         if (flowDesc === "") {
-          error = "Flow description can't be empty";
+          error = this.$_("Flow description can't be empty");
         } else if (circular.length > 0) {
           // only report the first circular(graphlib requires the edge endpoints
           // to be string, we should convert them back into numbers)
@@ -832,9 +832,9 @@
           }
 
           circular = res;
-          error = "Circular references detected, please fix your flow design.";
+          error = this.$_("Circular references detected, please fix your flow design.");
         } else if (detached.length > 0) {
-          error = "Flow should not include detached nodes";
+          error = this.$_("Flow should not include detached nodes");
         }
 
         return [

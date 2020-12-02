@@ -59,7 +59,7 @@ function createPo(items) {
     'Content-Type': 'text/plain; charset=utf-8',
     'Content-Transfer-Encoding': '8bit',
     'Generated-By': 'gettext-4-vue',
-    'Project-Id-Version': '',
+    'plural-forms': 'nplurals=2; plural=(n != 1);'
   };
 
   for (let item of items) {
@@ -83,6 +83,9 @@ function createPo(items) {
       entry.msgid_plural = item.args[2];
     }
 
+    // has filename references?
+    entry.references = item.references;
+
     catalog.items.push(entry);
   }
 
@@ -93,7 +96,7 @@ function createPo(items) {
 // find and register each translation entry
 // TODO: warn possible invalid format
 // quit if error occurred
-function registerCallee(callee, args) {
+function registerCallee(callee, args, references=[]) {
   if (callee === "gettext") {
     if (
       args.length !== 1 ||
@@ -167,7 +170,8 @@ function registerCallee(callee, args) {
   ) {
     translations.push({
       callee,
-      args
+      args,
+      references
     });
   }
 }
@@ -199,14 +203,20 @@ const walker = (path) => {
       // console.log(`${path.node.loc.start.line}:${path.node.loc.start.column}`);
       let args = path.node.arguments.map((arg) => getArgValue(arg));
 
+      // TODO: should merge multiple same entries into one entry with
+      // different references
+      let references = [
+        `${path.node.loc.start.line}:${path.node.loc.start.column}`
+      ];
+
       if (helpersShortcutsMap.gettext === calleeName) {
-        registerCallee("gettext", args);
+        registerCallee("gettext", args, references);
       } else if (helpersShortcutsMap.pgettext === calleeName) {
-        registerCallee("pgettext", args);
+        registerCallee("pgettext", args, references);
       } else if (helpersShortcutsMap.ngettext === calleeName) {
-        registerCallee("ngettext", args);
+        registerCallee("ngettext", args, references);
       } else if (helpersShortcutsMap.npgettext === calleeName) {
-        registerCallee("npgettext", args);
+        registerCallee("npgettext", args, references);
       }
     }
   }
