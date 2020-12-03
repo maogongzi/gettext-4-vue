@@ -34,18 +34,17 @@ function getArgValue(argNode) {
 // find and register each translation entry
 // TODO: warn possible invalid format
 // quit if error occurred
-function addTranslation(call, args, references, translationCache) {
+function verifyEntry(call, args) {
+  let error = null;
+
   if (call === "gettext") {
     if (
       args.length < 1 ||
       typeof args[0] !== "string"
     ) {
-      throw new Error(
-        "gettext requires the first argument to be a string literal,\n" +
+      error = "gettext requires the first argument to be a string literal,\n" +
         "the rest, if present, will be counted as placeholder(%s) values\n" +
-        `given: ${JSON.stringify(args)}`
-      );
-      process.exit(-1);
+        `given: ${JSON.stringify(args)}`;
     }
   } else if  (call === "pgettext") {
     if (
@@ -53,12 +52,9 @@ function addTranslation(call, args, references, translationCache) {
       typeof args[0] !== "string" ||
       typeof args[1] !== "string"
     ) {
-      throw new Error(
-        "pgettext requires the first two arguments to be string literals\n" +
+      error = "pgettext requires the first two arguments to be string literals\n" +
         "the rest, if present, will be counted as placeholder(%1, %2, etc.) values\n" +
-        `given: ${JSON.stringify(args)}`
-      );
-      process.exit(-1);
+        `given: ${JSON.stringify(args)}`;
     }
   } else if  (call === "ngettext") {
     if (
@@ -66,13 +62,10 @@ function addTranslation(call, args, references, translationCache) {
       typeof args[0] !== "string" ||
       typeof args[1] !== "string"
     ) {
-      throw new Error(
-        "ngettext requires the first two arguments to be string literals\n" +
+      error = "ngettext requires the first two arguments to be string literals\n" +
         "the third to be anything that results in a number\n" +
         "the rest, if present, will be counted as placeholder(%1, %2, etc.) values\n" +
-        `given: ${JSON.stringify(args)}`
-      );
-      process.exit(-1);
+        `given: ${JSON.stringify(args)}`;
     }
   } else if  (call === "npgettext") {
     if (
@@ -81,21 +74,18 @@ function addTranslation(call, args, references, translationCache) {
       typeof args[1] !== "string" ||
       typeof args[2] !== "string"
     ) {
-      throw new Error(
-        "npgettext requires the first three arguments to be string literals\n" +
+      error = "npgettext requires the first three arguments to be string literals\n" +
         "the forth to be anything that results in a number\n" +
         "the rest, if present, will be counted as placeholder(%1, %2, etc.) values\n" +
-        `given: ${JSON.stringify(args)}`
-      );
-      process.exit(-1);
+        `given: ${JSON.stringify(args)}`;
     }
   }
 
-  translationCache.push({
-    call,
-    args,
-    references
-  });
+  if (error) {
+    throw new Error(error);
+  }
+
+  return true;
 }
 
 // @param {String} srcType   "template|js", template indicates this
@@ -103,7 +93,7 @@ function addTranslation(call, args, references, translationCache) {
 //  which case we can't map the accurate line number of the translation
 //  texts, but for "js", either it's the script part of the SFC, or an
 //  individual module, we can obtain the exact matching line number
-function astWalker(astPath, srcType, filename, translationCache) {
+function astWalker(astPath, cb) {
   // only extract function calls
   if (astPath.node.type === "CallExpression") {
     // for cases: dialogTitle: this.$_() we should treat it as a
@@ -113,28 +103,11 @@ function astWalker(astPath, srcType, filename, translationCache) {
       : astPath.node.callee.name;
 
     if (utils.GETTEXT_CALL_SHORTCUTS.includes(calleeName)) {
+      let call = utils.GETTEXT_CALL_MAP_REVERSED[calleeName];
       // in js part this can be used
       let args = astPath.node.arguments.map((arg) => getArgValue(arg));
 
-      // TODO: should merge multiple same entries into one entry with
-      // different references
-      let references = srcType === "js"
-        ? [`${filename}:${astPath.node.loc.start.line},${astPath.node.loc.start.column}`]
-        : [`${filename}`];
-
-      let call;
-
-      if (utils.GETTEXT_CALL_MAP.gettext === calleeName) {
-        call = "gettext";
-      } else if (utils.GETTEXT_CALL_MAP.pgettext === calleeName) {
-        call = "pgettext";
-      } else if (utils.GETTEXT_CALL_MAP.ngettext === calleeName) {
-        call = "ngettext";
-      } else if (utils.GETTEXT_CALL_MAP.npgettext === calleeName) {
-        call = "npgettext";
-      }
-
-      addTranslation(call, args, references, translationCache);
+      cb(call, args, astPath.node.loc.start);
     }
   }
 };
@@ -149,7 +122,7 @@ function extractComponent(filename) {
   });
 
   // cache for all translations of this component
-  let componentTranslations = [];
+  let translations = [];
 
   // only process when there is <template> block, in case some components
   // use render function instead of template.
@@ -162,7 +135,18 @@ function extractComponent(filename) {
 
     babelTraverse(renderFnAst, {
       enter(astPath) {
-        astWalker(astPath, "template", filename, componentTranslations);
+        astWalker(astPath, (call, args) => {
+          // TODO: should merge multiple same entries into one entry with
+          // different references
+          if (verifyEntry(call, args)) {
+            translations.push({
+              call,
+              args,
+              // for template block, we can't map to the exact line number
+              reference: filename
+            });
+          }
+        });
       }
     });
   }
@@ -178,12 +162,20 @@ function extractComponent(filename) {
 
     babelTraverse(scriptAst, {
       enter(astPath) {
-        astWalker(astPath, "js", filename, componentTranslations);
+        astWalker(astPath, (call, args, { line, column }) => {
+          if (verifyEntry(call, args)) {
+            translations.push({
+              call,
+              args,
+              reference: `${filename}:${line},${column}`
+            });
+          }
+        });
       }
     });
   }
 
-  return componentTranslations;
+  return translations;
 }
 
 // parse a normal js module(should be in es6 format)
@@ -196,15 +188,23 @@ function extractJsModule(filename) {
   });
 
   // cache for all translations of this js module
-  let jsTranslations = [];
+  let translations = [];
 
   babelTraverse(scriptAst, {
     enter(astPath) {
-      astWalker(astPath, "js", filename, jsTranslations);
+      astWalker(astPath, (call, args, { line, column }) => {
+        if (verifyEntry(call, args)) {
+          translations.push({
+            call,
+            args,
+            reference: `${filename}:${line},${column}`
+          });
+        }
+      });
     }
   });
 
-  return jsTranslations;
+  return translations;
 }
 
 module.exports = {

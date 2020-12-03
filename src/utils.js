@@ -64,6 +64,7 @@ function findEntry(translations, entry) {
   });
 }
 
+// create pot file
 function createPot(gettextCalls) {
   const catalog = new Pofile();
 
@@ -74,31 +75,114 @@ function createPot(gettextCalls) {
     'plural-forms': 'nplurals=2; plural=(n != 1);'
   };
 
+  // should merge duplicated entries
   for (let item of gettextCalls) {
-    let entry = new Pofile.Item();
-
     if (item.call === "gettext") {
-      entry.msgstr = [];
-      entry.msgid = item.args[0];
+      // try to find an entry with identical msg id, if there is one we
+      // will stop creating new entry, instead simply add references to
+      // the existing entry
+      let existingEntry = catalog.items.find((x) => {
+        // only those messages sharing the same message id but don't have
+        // a context can be counted as the same message
+        return x.msgid === item.args[0] && !x.msgctxt;
+      });
+
+      // found an existing entry with the same msg id
+      if (existingEntry) {
+        // only append reference if it doesn't exist in the reference list
+        // of the existing entry
+        if (!existingEntry.references.includes(item.reference)) {
+          existingEntry.references.push(item.reference);
+        }
+      } else {
+        // else: create a new entry
+        let entry = new Pofile.Item();
+
+        entry.msgid = item.args[0];
+        entry.msgstr = [];
+        // has filename references?(by default we'll have at least
+        // one reference pointing to the filename, this occurs in vue
+        // components since we can't obtain the exact line number of the
+        // transformed render function of the template block because
+        // the AST provided by Vue doesn't expose line numbers)
+        entry.references = [item.reference];
+
+        catalog.items.push(entry);
+      }
     } else if (item.call === "ngettext") {
-      entry.msgstr = ["", ""];
-      entry.msgid = item.args[0];
-      entry.msgid_plural = item.args[1];
+      let existingEntry = catalog.items.find((x) => {
+        // only those messages sharing the same message id but don't have
+        // a context can be counted as the same message
+        return x.msgid === item.args[0] && !x.msgctxt;
+      });
+
+      if (existingEntry) {
+        // only append reference if it doesn't exist in the reference list
+        // of the existing entry
+        if (!existingEntry.references.includes(item.reference)) {
+          existingEntry.references.push(item.reference);
+        }
+      } else {
+        // else: create a new entry
+        let entry = new Pofile.Item();
+
+        entry.msgid = item.args[0];
+        entry.msgid_plural = item.args[1];
+        entry.msgstr = ["", ""];
+        entry.references = [item.reference];
+
+        catalog.items.push(entry);
+      }
     } else if (item.call === "pgettext") {
-      entry.msgstr = [];
-      entry.msgctxt = item.args[0];
-      entry.msgid = item.args[1];
+      let existingEntry = catalog.items.find((x) => {
+        // only those messages sharing the same message id and context
+        // can be counted as the same message
+        return x.msgid === item.args[1] && x.msgctxt === item.args[0];
+      });
+
+      if (existingEntry) {
+        // only append reference if it doesn't exist in the reference list
+        // of the existing entry
+        if (!existingEntry.references.includes(item.reference)) {
+          existingEntry.references.push(item.reference);
+        }
+      } else {
+        // else: create a new entry
+        let entry = new Pofile.Item();
+
+        entry.msgid = item.args[1];
+        entry.msgstr = [];
+        entry.msgctxt = item.args[0];
+        entry.references = [item.reference];
+
+        catalog.items.push(entry);
+      }
     } else if (item.call === "npgettext") {
-      entry.msgstr = ["", ""];
-      entry.msgctxt = item.args[0];
-      entry.msgid = item.args[1];
-      entry.msgid_plural = item.args[2];
+      let existingEntry = catalog.items.find((x) => {
+        // only those messages sharing the same message id and context
+        // can be counted as the same message
+        return x.msgid === item.args[1] && x.msgctxt === item.args[0];
+      });
+
+      if (existingEntry) {
+        // only append reference if it doesn't exist in the reference list
+        // of the existing entry
+        if (!existingEntry.references.includes(item.reference)) {
+          existingEntry.references.push(item.reference);
+        }
+      } else {
+        // else: create a new entry
+        let entry = new Pofile.Item();
+
+        entry.msgid = item.args[1];
+        entry.msgid_plural = item.args[2];
+        entry.msgstr = ["", ""];
+        entry.msgctxt = item.args[0];
+        entry.references = [item.reference];
+
+        catalog.items.push(entry);
+      }
     }
-
-    // has filename references?
-    entry.references = item.references;
-
-    catalog.items.push(entry);
   }
 
   return catalog;
@@ -108,6 +192,7 @@ module.exports = {
   GETTEXT_CALL_MAP,
   GETTEXT_CALL_NAMES,
   GETTEXT_CALL_SHORTCUTS,
+  GETTEXT_CALL_MAP_REVERSED,
   retriveFiles,
   createPot
 };

@@ -33,6 +33,8 @@ module.exports.cli = async function(args) {
   let fileList = await utils.retriveFiles(options.patterns);
   let allTranslations = [];
 
+  // iterate through each file, both vue components and js modules(in es2015
+  // format) and extract and merge translations into the center catlog.
   fileList.forEach((file) => {
     if (path.extname(file) === ".vue") {
       allTranslations.push.apply(
@@ -47,6 +49,7 @@ module.exports.cli = async function(args) {
     }
   });
 
+  // save pot file
   io.write(options.output, utils.createPot(allTranslations));
-  console.log("done");
+  console.log("done", allTranslations.length);
 }
