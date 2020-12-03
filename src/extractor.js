@@ -91,33 +91,11 @@ function addTranslation(call, args, references, translationCache) {
     }
   }
 
-  // remove duplicate entries(all signatures are the same including arguments)
-  if (
-    !translationCache.some((item) => {
-      // basic check: msg and length of arguments are same.
-      let flag = item.call === call &&
-        item.args.length === args.length;
-
-      // further check if every argument is the same
-      if (flag === true) {
-        for (let i = 0; i < args.length; i++) {
-          if (item.args[i] !== args[i]) {
-            flag = false;
-
-            break;
-          }
-        }
-      }
-
-      return flag;
-    })
-  ) {
-    translationCache.push({
-      call,
-      args,
-      references
-    });
-  }
+  translationCache.push({
+    call,
+    args,
+    references
+  });
 }
 
 // @param {String} srcType   "template|js", template indicates this
@@ -136,7 +114,6 @@ function astWalker(astPath, srcType, filename, translationCache) {
 
     if (utils.GETTEXT_CALL_SHORTCUTS.includes(calleeName)) {
       // in js part this can be used
-      // console.log(`${astPath.node.loc.start.line}:${astPath.node.loc.start.column}`);
       let args = astPath.node.arguments.map((arg) => getArgValue(arg));
 
       // TODO: should merge multiple same entries into one entry with

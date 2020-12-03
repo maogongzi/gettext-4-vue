@@ -1,4 +1,3 @@
-const fs=require('fs')
 const path=require('path')
 const arg = require('arg');
 const utils = require('./utils');
@@ -32,17 +31,22 @@ module.exports.cli = async function(args) {
   }
 
   let fileList = await utils.retriveFiles(options.patterns);
+  let allTranslations = [];
 
   fileList.forEach((file) => {
     if (path.extname(file) === ".vue") {
-      let res = extractor.extractComponent(file);
-
-      if (res.length > 0) {
-        console.log(file)
-        console.log(res)
-      }
+      allTranslations.push.apply(
+        allTranslations,
+        extractor.extractComponent(file)
+      );
     } else if (path.extname(file) === ".js") {
-      extractor.extractJsModule(file);
+      allTranslations.push.apply(
+        allTranslations,
+        extractor.extractJsModule(file)
+      );
     }
-  })
+  });
+
+  io.write(options.output, utils.createPot(allTranslations));
+  console.log("done");
 }
