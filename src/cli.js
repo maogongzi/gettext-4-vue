@@ -1,7 +1,9 @@
 const fs=require('fs')
+const path=require('path')
 const arg = require('arg');
 const utils = require('./utils');
-// const extractor
+const extractor = require('./extractor');
+const io = require('./io');
 
 function parseArgumentsIntoOptions(rawArgs) {
  const args = arg(
@@ -31,5 +33,16 @@ module.exports.cli = async function(args) {
 
   let fileList = await utils.retriveFiles(options.patterns);
 
-  console.log(fileList);
+  fileList.forEach((file) => {
+    if (path.extname(file) === ".vue") {
+      let res = extractor.extractComponent(file);
+
+      if (res.length > 0) {
+        console.log(file)
+        console.log(res)
+      }
+    } else if (path.extname(file) === ".js") {
+      extractor.extractJsModule(file);
+    }
+  })
 }
