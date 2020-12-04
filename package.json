@@ -1,6 +1,6 @@
 {
   "name": "gettext-4-vue",
-  "version": "1.1.0",
+  "version": "1.0.0",
   "main": "index.js",
   "license": "MIT",
   "bin": {
@@ -20,6 +20,5 @@
     "glob": "7.1.6",
     "pofile": "1.1.0",
     "vue-template-compiler": "2.6.12"
-  },
-  "dependencies": {}
+  }
 }
