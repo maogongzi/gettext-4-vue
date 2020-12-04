@@ -34,7 +34,7 @@ function getArgValue(argNode) {
 // find and register each translation entry
 // TODO: warn possible invalid format
 // quit if error occurred
-function verifyEntry(call, args) {
+function verifyEntry(call, args, { filename, line="?", column="?" }) {
   let error = null;
 
   if (call === "gettext") {
@@ -42,9 +42,11 @@ function verifyEntry(call, args) {
       args.length < 1 ||
       typeof args[0] !== "string"
     ) {
-      error = "gettext requires the first argument to be a string literal,\n" +
+      error = "gettext requires the first argument to be a string literal," +
         "the rest, if present, will be counted as placeholder(%s) values\n" +
-        `given: ${JSON.stringify(args)}`;
+        `Given: ${JSON.stringify(args)}\n` +
+        `Problematic file: ${filename}\n` +
+        `Line number(template block will be blank): ${line},${column}`;
     }
   } else if  (call === "pgettext") {
     if (
@@ -52,9 +54,12 @@ function verifyEntry(call, args) {
       typeof args[0] !== "string" ||
       typeof args[1] !== "string"
     ) {
-      error = "pgettext requires the first two arguments to be string literals\n" +
-        "the rest, if present, will be counted as placeholder(%1, %2, etc.) values\n" +
-        `given: ${JSON.stringify(args)}`;
+      error = "pgettext requires the first two arguments to be string" +
+        " literals, the rest, if present, will be counted as" +
+        " placeholder(%1, %2, etc.) values\n" +
+        `Given: ${JSON.stringify(args)}\n` +
+        `Problematic file: ${filename}\n` +
+        `Line number(template block will be blank): ${line},${column}`;
     }
   } else if  (call === "ngettext") {
     if (
@@ -62,10 +67,13 @@ function verifyEntry(call, args) {
       typeof args[0] !== "string" ||
       typeof args[1] !== "string"
     ) {
-      error = "ngettext requires the first two arguments to be string literals\n" +
-        "the third to be anything that results in a number\n" +
-        "the rest, if present, will be counted as placeholder(%1, %2, etc.) values\n" +
-        `given: ${JSON.stringify(args)}`;
+      error = "ngettext requires the first two arguments to be" +
+        " string literals, the third to be anything that results in a" +
+        " number, the rest, if present, will be counted as" +
+        "placeholder(%1, %2, etc.) values\n" +
+        `Given: ${JSON.stringify(args)}\n` +
+        `Problematic file: ${filename}\n` +
+        `Line number(template block will be blank): ${line},${column}`;
     }
   } else if  (call === "npgettext") {
     if (
@@ -74,10 +82,13 @@ function verifyEntry(call, args) {
       typeof args[1] !== "string" ||
       typeof args[2] !== "string"
     ) {
-      error = "npgettext requires the first three arguments to be string literals\n" +
-        "the forth to be anything that results in a number\n" +
-        "the rest, if present, will be counted as placeholder(%1, %2, etc.) values\n" +
-        `given: ${JSON.stringify(args)}`;
+      error = "npgettext requires the first three arguments to be" +
+        " string literals, the forth to be anything that results in a" +
+        " number, the rest, if present, will be counted as" +
+        " placeholder(%1, %2, etc.) values\n" +
+        `Given: ${JSON.stringify(args)}\n` +
+        `Problematic file: ${filename}\n` +
+        `LineNo(in <template> block will be blank): ${line},${column}`;
     }
   }
 
@@ -136,9 +147,10 @@ function extractComponent(filename) {
     babelTraverse(renderFnAst, {
       enter(astPath) {
         astWalker(astPath, (call, args) => {
-          // TODO: should merge multiple same entries into one entry with
-          // different references
-          if (verifyEntry(call, args)) {
+          // for <template> block, line number and column is pointless since
+          // the transformmed render function is not percisely mapped to
+          // the template
+          if (verifyEntry(call, args, { filename })) {
             translations.push({
               call,
               args,
@@ -163,7 +175,7 @@ function extractComponent(filename) {
     babelTraverse(scriptAst, {
       enter(astPath) {
         astWalker(astPath, (call, args, { line, column }) => {
-          if (verifyEntry(call, args)) {
+          if (verifyEntry(call, args, { filename, line, column })) {
             translations.push({
               call,
               args,
@@ -193,7 +205,7 @@ function extractJsModule(filename) {
   babelTraverse(scriptAst, {
     enter(astPath) {
       astWalker(astPath, (call, args, { line, column }) => {
-        if (verifyEntry(call, args)) {
+        if (verifyEntry(call, args, { filename, line, column })) {
           translations.push({
             call,
             args,
