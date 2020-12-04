@@ -1,8 +1,9 @@
-const path=require('path')
-const arg = require('arg');
-const utils = require('./utils');
-const extractor = require('./extractor');
-const io = require('./io');
+import fs from "fs";
+import path from 'path';
+import arg from 'arg';
+import utils from './utils';
+import extractor from './extractor';
+import io from './io';
 
 function parseArgumentsIntoOptions(rawArgs) {
  const args = arg(
@@ -23,11 +24,11 @@ function parseArgumentsIntoOptions(rawArgs) {
  };
 }
 
-module.exports.cli = async function(args) {
+async function cli(args) {
   let options = parseArgumentsIntoOptions(args);
 
   if (options.patterns.length === 0) {
-    throw new Error("Please specify at least one glob pattern, either vue SPA or js module");
+    throw new Error("Please specify at least one glob pattern, " + "either vue SPA or js module");
   }
 
   let fileList = await utils.retriveFiles(options.patterns);
@@ -51,5 +52,8 @@ module.exports.cli = async function(args) {
 
   // save pot file
   io.write(options.output, utils.createPot(allTranslations));
-  console.log("done", allTranslations.length);
+  console.log(`All ${allTranslations.length} translations have been` +
+    `extracted and saved to ${options.output}`);
 }
+
+export default cli;
