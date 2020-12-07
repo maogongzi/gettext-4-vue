@@ -1,10 +1,3 @@
 #!/usr/bin/env node
 
-const babelRegister = require("@babel/register");
-const babelConfig = require("../arch/babel/config");
-
-// 添加 es6 hooks
-babelRegister(babelConfig);
-
-// 分析并用调用 babel 编译指定 entry 脚本，如果指定了的话
-require("../src/cli").default(process.argv);
+require("../src/cli")(process.argv);

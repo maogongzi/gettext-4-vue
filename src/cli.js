@@ -1,9 +1,9 @@
-import fs from "fs";
-import path from 'path';
-import arg from 'arg';
-import utils from './utils';
-import extractor from './extractor';
-import io from './io';
+const fs = require("fs");
+const path = require("path");
+const arg = require("arg");
+const utils = require("./utils");
+const extractor = require("./extractor");
+const io = require("./io");
 
 function parseArgumentsIntoOptions(rawArgs) {
  const args = arg(
@@ -56,4 +56,4 @@ async function cli(args) {
     `extracted and saved to ${options.output}`);
 }
 
-export default cli;
+module.exports = cli;
