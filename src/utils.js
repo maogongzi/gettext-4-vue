@@ -71,8 +71,7 @@ function createPot(gettextCalls) {
   catalog.headers = {
     'Content-Type': 'text/plain; charset=utf-8',
     'Content-Transfer-Encoding': '8bit',
-    'Generated-By': 'gettext-4-vue',
-    'plural-forms': 'nplurals=2; plural=(n != 1);'
+    'Generated-By': 'gettext-4-vue'
   };
 
   // should merge duplicated entries
